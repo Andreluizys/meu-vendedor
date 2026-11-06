@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meu Vendedor</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1c2430; --muted:#667085; --line:#e3e7ee; --accent:#1f6feb; --good:#1a7f4b; --bad:#c0392b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14181f; --card:#1d232d; --text:#e8ecf2; --muted:#9aa5b5; --line:#2c3541; --accent:#5b9dff; --good:#4cc38a; --bad:#ff7b6e; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; align-items:center; gap:12px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header h1 { margin:0; font-size:18px; flex:1; }
+  nav { display:flex; gap:4px; padding:8px 20px 0; flex-wrap:wrap; }
+  nav button { background:none; border:0; padding:10px 14px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; font:inherit; }
+  nav button.on { color:var(--accent); border-color:var(--accent); font-weight:600; }
+  main { padding:16px 20px 60px; max-width:1100px; margin:0 auto; }
+  section { display:none; } section.on { display:block; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:14px; }
+  h2 { margin:0 0 6px; font-size:17px; } p.hint { margin:0 0 14px; color:var(--muted); font-size:13px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input[type=text], input[type=number], input[type=password], input[type=time], textarea, select {
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); font:inherit; }
+  textarea { min-height:90px; resize:vertical; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; } .row > * { flex:1; min-width:160px; }
+  button.btn { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer; font:inherit; }
+  button.btn.ghost { background:none; color:var(--accent); border:1px solid var(--line); }
+  button.btn.bad { background:none; color:var(--bad); border:1px solid var(--line); }
+  button.btn.good { background:var(--good); }
+  button.btn:disabled { opacity:.5; cursor:default; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; }
+  .tablewrap { overflow-x:auto; }
+  .msg { font-size:13px; margin-left:6px; } .msg.err { color:var(--bad); } .msg.ok { color:var(--good); }
+  .badge { font-size:12px; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
+  .days { display:flex; gap:10px; flex-wrap:wrap; } .days label { display:flex; gap:4px; align-items:center; margin:0; color:var(--text); }
+  .check { display:flex; gap:8px; align-items:center; margin-top:12px; color:var(--text); }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="appname">Meu Vendedor</h1>
+  <select id="lang" style="width:auto"></select>
+</header>
+<nav id="tabs"></nav>
+<main>
+  <section id="s-profile"><div class="card">
+    <h2 data-i="profile.title"></h2><p class="hint" data-i="profile.hint"></p>
+    <div class="row"><div><label data-i="profile.owner_name"></label><input type="text" id="p_owner_name"></div>
+      <div><label data-i="profile.company"></label><input type="text" id="p_company"></div></div>
+    <label data-i="profile.offer"></label><textarea id="p_offer"></textarea>
+    <label data-i="profile.audience"></label><input type="text" id="p_audience">
+    <div class="row"><div><label data-i="profile.tone"></label><input type="text" id="p_tone"></div>
+      <div><label data-i="profile.cta"></label><input type="text" id="p_cta"></div></div>
+    <label data-i="profile.extra"></label><textarea id="p_extra"></textarea>
+    <label data-i="profile.language"></label><select id="p_language"></select>
+    <div class="actions"><button class="btn" id="save-profile" data-i="btn.save"></button><span class="msg" id="m-profile"></span></div>
+  </div></section>
+
+  <section id="s-search"><div class="card">
+    <h2 data-i="search.title"></h2>
+    <div class="row"><div><label data-i="search.niche"></label><input type="text" id="q_niche"></div>
+      <div><label data-i="search.location"></label><input type="text" id="q_location"></div>
+      <div style="max-width:160px"><label data-i="search.max"></label><input type="number" id="q_max" min="1" max="60" value="20"></div></div>
+    <div class="actions"><button class="btn" id="do-search" data-i="search.go"></button><span class="msg" id="m-search"></span></div>
+  </div></section>
+
+  <section id="s-leads"><div class="card">
+    <div class="row" style="align-items:center"><h2 data-i="leads.title" style="flex:3"></h2>
+      <select id="leads-filter" style="max-width:180px"></select></div>
+    <div class="tablewrap"><table><thead><tr id="leads-head"></tr></thead><tbody id="leads-body"></tbody></table></div>
+    <p class="hint" id="leads-empty" data-i="leads.empty" style="margin-top:12px"></p>
+    <span class="msg" id="m-leads"></span>
+  </div></section>
+
+  <section id="s-drafts"><div class="card">
+    <div class="row" style="align-items:center"><h2 data-i="drafts.title" style="flex:3"></h2>
+      <select id="drafts-filter" style="max-width:180px"></select></div>
+    <p class="hint" data-i="drafts.note"></p>
+    <div id="drafts-list"></div>
+    <p class="hint" id="drafts-empty" data-i="drafts.empty"></p>
+  </div></section>
+
+  <section id="s-settings">
+    <div class="card"><h2 data-i="settings.send.title"></h2><p class="hint" data-i="settings.send.note"></p>
+      <label data-i="settings.mode"></label><select id="s_mode"></select>
+      <div class="row"><div><label data-i="settings.daily_limit"></label><input type="number" id="s_daily_limit" min="1" max="1000"></div>
+        <div><label data-i="settings.interval_min"></label><input type="number" id="s_interval_min_s" min="0"></div>
+        <div><label data-i="settings.interval_max"></label><input type="number" id="s_interval_max_s" min="0"></div></div>
+      <label data-i="settings.days"></label><div class="days" id="s_days"></div>
+      <div class="row"><div><label data-i="settings.hour_start"></label><input type="time" id="s_hour_start"></div>
+        <div><label data-i="settings.hour_end"></label><input type="time" id="s_hour_end"></div></div>
+      <label class="check"><input type="checkbox" id="s_typing"><span data-i="settings.typing"></span></label>
+      <div class="row"><div><label data-i="settings.typing_min"></label><input type="number" id="s_typing_min_s" min="0" max="30"></div>
+        <div><label data-i="settings.typing_max"></label><input type="number" id="s_typing_max_s" min="0" max="30"></div></div>
+      <div class="actions"><button class="btn" id="save-send" data-i="btn.save"></button><span class="msg" id="m-send"></span></div>
+    </div>
+    <div class="card"><h2 data-i="api.title"></h2><p class="hint" data-i="api.help"></p>
+      <label data-i="api.label"></label><input type="password" id="k_key" autocomplete="off">
+      <div class="actions"><button class="btn" id="save-key" data-i="btn.save"></button><span class="msg" id="m-key"></span></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const TABS = ["profile", "search", "leads", "drafts", "settings"];
+const LANGS = ["pt", "en", "es"];
+let T = {}, lang = "pt";
+
+const $ = (id) => document.getElementById(id);
+const t = (k, vars) => { let s = T[k] ?? k; for (const [a, b] of Object.entries(vars || {})) s = s.replace("{" + a + "}", b); return s; };
+// Cria elementos sem innerHTML: nomes vindos do Google nunca são interpretados como HTML.
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") el.className = v; else if (k.startsWith("on")) el.addEventListener(k.slice(2), v); else if (v !== null && v !== undefined) el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : t("error.generic"));
+  return data;
+}
+function say(id, text, ok) { const el = $(id); el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); if (ok) setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 2500); }
+const guard = (id, fn) => async (...a) => { try { await fn(...a); } catch (e) { say(id, e.message, false); } };
+
+// ---------- idioma ----------
+async function setLang(l) {
+  lang = LANGS.includes(l) ? l : "pt";
+  try { localStorage.setItem("lang", lang); } catch (e) {}
+  T = await api("GET", "/api/i18n/" + lang);
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach((el) => { el.textContent = t(el.dataset.i); });
+  $("tabs").replaceChildren(...TABS.map((k) => h("button", { "data-tab": k, onclick: () => showTab(k) }, t("tab." + k))));
+  $("lang").replaceChildren(...LANGS.map((c) => h("option", { value: c, selected: c === lang ? "" : null }, ({ pt: "Português", en: "English", es: "Español" })[c])));
+  fillSelects(); buildHeads(); showTab(currentTab);
+}
+function fillSelects() {
+  const keep = (id) => $(id).value;
+  const pl = keep("p_language"), sm = keep("s_mode");
+  $("p_language").replaceChildren(...LANGS.map((c) => h("option", { value: c }, ({ pt: "Português", en: "English", es: "Español" })[c])));
+  $("s_mode").replaceChildren(h("option", { value: "manual" }, t("settings.mode.manual")), h("option", { value: "auto" }, t("settings.mode.auto")));
+  if (pl) $("p_language").value = pl; if (sm) $("s_mode").value = sm;
+  const f = (id, opts, tk) => { const cur = $(id).value; $(id).replaceChildren(h("option", { value: "" }, t("filter.all")), ...opts.map((o) => h("option", { value: o }, t(tk + o)))); $(id).value = cur; };
+  f("leads-filter", ["new", "approved", "rejected", "contacted"], "status.");
+  f("drafts-filter", ["pending", "approved", "rejected"], "draftstatus.");
+  if (!$("drafts-filter").dataset.init) { $("drafts-filter").value = "pending"; $("drafts-filter").dataset.init = "1"; }
+  $("s_days").replaceChildren(...[0,1,2,3,4,5,6].map((i) => h("label", {}, h("input", { type: "checkbox", id: "day" + i, checked: daysState[i] ? "" : null, onchange: (e) => { daysState[i] = e.target.checked; } }), t("days." + i))));
+}
+function buildHeads() {
+  $("leads-head").replaceChildren(...["name","address","phone","website","rating","status","actions"].map((c) => h("th", {}, t("col." + c))));
+}
+
+// ---------- abas ----------
+let currentTab = "profile";
+function showTab(k) {
+  currentTab = k;
+  TABS.forEach((x) => $("s-" + x).classList.toggle("on", x === k));
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === k));
+  if (k === "leads") loadLeads(); if (k === "drafts") loadDrafts(); if (k === "settings") loadSettings();
+}
+
+// ---------- perfil ----------
+const PF = ["owner_name", "company", "offer", "audience", "tone", "cta", "extra", "language"];
+async function loadProfile() { const p = await api("GET", "/api/profile"); PF.forEach((f) => { $("p_" + f).value = p[f] ?? ""; }); }
+$("save-profile").onclick = guard("m-profile", async () => {
+  const body = {}; PF.forEach((f) => { body[f] = $("p_" + f).value; });
+  await api("PUT", "/api/profile", body); say("m-profile", t("saved"), true);
+});
+
+// ---------- busca ----------
+$("do-search").onclick = guard("m-search", async () => {
+  const b = $("do-search"); b.disabled = true; say("m-search", t("search.running"), true);
+  try {
+    const r = await api("POST", "/api/search", { niche: $("q_niche").value, location: $("q_location").value, max_results: Number($("q_max").value) || 20 });
+    say("m-search", t("search.result", { new: r.new, total: r.total }), true);
+  } finally { b.disabled = false; }
+});
+
+// ---------- empresas ----------
+async function loadLeads() {
+  const f = $("leads-filter").value;
+  const rows = await api("GET", "/api/leads" + (f ? "?status=" + f : ""));
+  $("leads-empty").style.display = rows.length ? "none" : "block";
+  $("leads-body").replaceChildren(...rows.map((l) => {
+    const sel = h("select", { onchange: guard("m-leads", async (e) => { await api("PATCH", "/api/leads/" + l.id, { status: e.target.value }); }) },
+      ...["new", "approved", "rejected", "contacted"].map((s) => h("option", { value: s, selected: s === l.status ? "" : null }, t("status." + s))));
+    const site = l.website ? h("a", { href: /^https?:\/\//i.test(l.website) ? l.website : "#", target: "_blank", rel: "noopener noreferrer" }, l.website.replace(/^https?:\/\/(www\.)?/i, "").slice(0, 28)) : "";
+    const name = l.maps_url && /^https?:\/\//i.test(l.maps_url) ? h("a", { href: l.maps_url, target: "_blank", rel: "noopener noreferrer" }, l.name) : l.name;
+    const gen = (ch) => guard("m-leads", async () => { await api("POST", "/api/leads/" + l.id + "/draft", { channel: ch }); say("m-leads", t("saved"), true); });
+    return h("tr", {}, h("td", {}, name), h("td", {}, l.address), h("td", {}, l.phone), h("td", {}, site),
+      h("td", {}, l.rating ? l.rating + " (" + (l.reviews ?? 0) + ")" : ""), h("td", {}, sel),
+      h("td", {}, h("div", { class: "actions", style: "margin:0" },
+        h("button", { class: "btn ghost", onclick: gen("email") }, t("btn.draft_email")),
+        h("button", { class: "btn ghost", onclick: gen("whatsapp") }, t("btn.draft_whatsapp")),
+        h("button", { class: "btn bad", onclick: guard("m-leads", async () => { if (confirm(t("confirm.delete"))) { await api("DELETE", "/api/leads/" + l.id); loadLeads(); } }) }, t("btn.delete")))));
+  }));
+}
+$("leads-filter").onchange = loadLeads;
+
+// ---------- mensagens ----------
+async function loadDrafts() {
+  const f = $("drafts-filter").value;
+  const rows = await api("GET", "/api/drafts" + (f ? "?status=" + f : ""));
+  $("drafts-empty").style.display = rows.length ? "none" : "block";
+  $("drafts-list").replaceChildren(...rows.map((d) => {
+    const subj = d.channel === "email" ? h("input", { type: "text", value: d.subject }) : null;
+    const body = h("textarea", {}, d.body); body.value = d.body;
+    const msg = h("span", { class: "msg" });
+    const act = (status) => async () => {
+      try {
+        await api("PATCH", "/api/drafts/" + d.id, { body: body.value, subject: subj ? subj.value : undefined, status });
+        if (status) loadDrafts(); else { msg.textContent = t("saved"); msg.className = "msg ok"; }
+      } catch (e) { msg.textContent = e.message; msg.className = "msg err"; }
+    };
+    return h("div", { class: "card", style: "background:var(--bg)" },
+      h("div", { class: "row", style: "align-items:center" },
+        h("strong", {}, d.lead_name), h("span", { class: "badge" }, t("channel." + d.channel)), h("span", { class: "badge" }, t("draftstatus." + d.status))),
+      subj ? [h("label", {}, t("draft.subject")), subj] : null,
+      h("label", {}, t("draft.body")), body,
+      h("div", { class: "actions" },
+        h("button", { class: "btn ghost", onclick: act(undefined) }, t("btn.save")),
+        h("button", { class: "btn good", onclick: act("approved") }, t("btn.approve")),
+        h("button", { class: "btn bad", onclick: act("rejected") }, t("btn.reject")),
+        h("button", { class: "btn bad", onclick: async () => { if (confirm(t("confirm.delete"))) { await api("DELETE", "/api/drafts/" + d.id); loadDrafts(); } } }, t("btn.delete")), msg));
+  }));
+}
+$("drafts-filter").onchange = loadDrafts;
+
+// ---------- configurações ----------
+const daysState = [true, true, true, true, true, false, false];
+async function loadSettings() {
+  const s = await api("GET", "/api/send-settings");
+  $("s_mode").value = s.mode; $("s_daily_limit").value = s.daily_limit;
+  $("s_interval_min_s").value = s.interval_min_s; $("s_interval_max_s").value = s.interval_max_s;
+  s.days.forEach((v, i) => { daysState[i] = v; const c = $("day" + i); if (c) c.checked = v; });
+  $("s_hour_start").value = s.hour_start; $("s_hour_end").value = s.hour_end;
+  $("s_typing").checked = s.typing_simulation; $("s_typing_min_s").value = s.typing_min_s; $("s_typing_max_s").value = s.typing_max_s;
+  const k = await api("GET", "/api/api-key");
+  $("k_key").placeholder = k.set ? t("api.set") : t("api.notset");
+}
+$("save-send").onclick = guard("m-send", async () => {
+  await api("PUT", "/api/send-settings", {
+    mode: $("s_mode").value, daily_limit: Number($("s_daily_limit").value),
+    interval_min_s: Number($("s_interval_min_s").value), interval_max_s: Number($("s_interval_max_s").value),
+    days: daysState.slice(), hour_start: $("s_hour_start").value, hour_end: $("s_hour_end").value,
+    typing_simulation: $("s_typing").checked, typing_min_s: Number($("s_typing_min_s").value), typing_max_s: Number($("s_typing_max_s").value),
+  });
+  say("m-send", t("saved"), true);
+});
+$("save-key").onclick = guard("m-key", async () => {
+  await api("PUT", "/api/api-key", { api_key: $("k_key").value }); $("k_key").value = "";
+  say("m-key", t("saved"), true); loadSettings();
+});
+
+// ---------- início ----------
+$("lang").onchange = (e) => setLang(e.target.value);
+(async () => {
+  try { const i = await api("GET", "/api/info"); $("appname").textContent = i.name; document.title = i.name; } catch (e) {}
+  let saved = null; try { saved = localStorage.getItem("lang"); } catch (e) {}
+  const nav = (navigator.language || "pt").slice(0, 2);
+  await setLang(saved || (LANGS.includes(nav) ? nav : "pt"));
+  loadProfile();
+})();
+</script>
+</body>
+</html>
