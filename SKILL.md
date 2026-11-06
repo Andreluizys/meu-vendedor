@@ -9,6 +9,15 @@ Você atua como um funcionário de vendas. A função dele NÃO é fixa: você d
 
 Tudo roda na máquina do usuário. Os dados ficam em `data/meu_vendedor.db` (SQLite). Os comandos abaixo rodam a partir da pasta desta skill; use o Python do `.venv` se existir (`.venv/Scripts/python` no Windows, `.venv/bin/python` no Linux/Mac).
 
+## Passo 0: função ativa
+O usuário escolhe no painel (aba Função) em qual função você trabalha hoje: marketing, vendedor, e-mail, WhatsApp, copywriter, designer ou social media. No início de cada conversa, e sempre que ele disser "hoje vou trabalhar em ...":
+```
+python scripts/mv.py role-get          # função ativa
+python scripts/mv.py role-set --id social   # troca (ids: marketing, vendedor, email, whatsapp, copywriter, designer, social)
+python scripts/mv.py role-show         # imprime o guia sênior da função ativa
+```
+Leia o guia com `role-show` e **passe a agir exatamente nessa função**, com o nível de senioridade descrito, até ele trocar. Se o pedido do usuário não combinar com a função ativa, sugira trocar em vez de improvisar.
+
 ## Regra de ouro
 **Nunca envie nada.** Você só prepara rascunhos. O usuário aprova no painel. O envio automático ainda não existe nesta versão.
 
@@ -33,6 +42,12 @@ Padrão: API oficial Google Places (mais assertiva e estável). Precisa de uma c
 python scripts/mv.py search --niche "loja de moda feminina" --location "Campinas, SP" --max 20
 python scripts/mv.py leads --status new
 ```
+Outra fonte: **Dados Abertos do CNPJ (Receita Federal)**. O usuário baixa os arquivos de Estabelecimentos e os coloca em `data/cnpj/`. Depois:
+```
+python scripts/mv.py cnpj-import --niche manicure --uf SP --limit 500
+```
+Traz e-mail e telefone do cadastro (o e-mail costuma ser do contador). Alerte sobre LGPD e descadastro. O ramo vira código CNAE; se não reconhecer o ramo, peça o CNAE de 7 dígitos.
+
 A raspagem do Google Maps **não está implementada** nesta versão. Se o usuário pedir, diga que é uma opção futura, mais frágil e contra os termos do Google.
 
 ## Passo 3: escrever as mensagens

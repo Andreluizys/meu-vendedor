@@ -4,8 +4,8 @@ Skill do Claude que funciona como um funcionário/vendedor virtual para prospec�
 
 Painel e skill em **português, inglês e espanhol**.
 
-## Status (v0.1)
-Pronto: painel local, entrevista pela skill, busca no Google Maps (API Places oficial), rascunhos de e-mail e WhatsApp para aprovar, configurações de envio (guardadas).
+## Status (v0.2)
+Pronto: painel local, entrevista pela skill, **7 funções pré-definidas de nível sênior** (escolhidas na aba Função), busca no Google Maps (API Places oficial), importação dos Dados Abertos do CNPJ, busca de e-mail no site da empresa, rascunhos de e-mail e WhatsApp para aprovar, contadores de prospectados/enviados/respondidos e configurações de envio (guardadas).
 **Ainda não existe:** envio de e-mail (Gmail), WhatsApp por QR Code, modo automático, raspagem do Maps. Nada é enviado nesta versão.
 
 ## Instalação (Windows)
@@ -16,6 +16,15 @@ Linux/Mac: `./iniciar.sh`.
 
 ## Usar com o Claude Code
 Copie esta pasta para `~/.claude/skills/meu-vendedor` (ou abra o Claude Code dentro dela) e peça, por exemplo: "quero prospectar lojas de moda em Campinas". A skill (`SKILL.md`) conduz a entrevista, busca as empresas, escreve as mensagens e as deixa no painel.
+
+## Funções
+Na aba **Função** você escolhe em qual papel o funcionário trabalha hoje: Arquiteto de Marketing, Vendedor, Prospecção por E-mail, WhatsApp, Copywriter, Designer ou Social Media. A skill lê o guia em `roles/<id>.md` e passa a agir naquela função. Para criar outra, adicione um `.md` em `roles/` e uma entrada em `roles/index.json`.
+
+## Empresas pela Receita Federal (CNPJ)
+Baixe os arquivos **Estabelecimentos** do portal de dados abertos do CNPJ, coloque em `data/cnpj/` e use a aba Buscar empresas (ou `python scripts/mv.py cnpj-import --niche manicure --uf SP`). O ramo vira código CNAE (a tabela é aproximada; aceita também o CNAE de 7 dígitos). O e-mail do cadastro costuma ser do contador. Respeite a LGPD e os pedidos de descadastro.
+
+## Contadores
+"Prospectados" conta e-mails encontrados e, no WhatsApp, só números de celular (telefone fixo não recebe WhatsApp). "Enviadas" e "respondidas" são registradas por você nas Mensagens até as integrações do Gmail e do WhatsApp existirem.
 
 ## Chave do Google Places
 Na aba **Configurações** do painel (ou na variável `GOOGLE_PLACES_API_KEY`). Crie a chave no Google Cloud ativando **Places API (New)**. Há cota gratuita mensal e depois cobrança por uso; telefone e site entram na faixa mais cara. A chave fica só no seu computador, sem criptografia, em `data/meu_vendedor.db`.

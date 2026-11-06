@@ -98,5 +98,16 @@
   "btn.mark_reply": "Registrar resposta",
   "reply.label": "Resposta recebida (opcional)",
   "sent.badge": "Enviada",
-  "replied.badge": "Respondida"
+  "replied.badge": "Respondida",
+  "tab.role": "Função",
+  "role.title": "Em qual função o seu funcionário vai trabalhar hoje?",
+  "role.hint": "Ao escolher, a skill passa a agir com o conhecimento sênior daquela área. Dá para trocar a qualquer momento.",
+  "role.activate": "Ativar",
+  "role.current": "Função ativa",
+  "role.active_now": "Ativa agora",
+  "cnpj.title": "Empresas pela Receita Federal (CNPJ)",
+  "cnpj.hint": "Lê os arquivos de Estabelecimentos que você baixou do portal de dados abertos do CNPJ e colocou na pasta data/cnpj. Traz e-mail e telefone do cadastro.",
+  "cnpj.uf": "Estado (ex.: SP)",
+  "cnpj.go": "Importar do CNPJ",
+  "cnpj.result": "{new} empresas novas de {total} encontradas."
 }

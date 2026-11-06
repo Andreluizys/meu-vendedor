@@ -15,7 +15,7 @@ os.environ.pop("GOOGLE_PLACES_API_KEY", None)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, db, drafts, emailfinder, places  # noqa: E402
+from app import cnpj, config, db, drafts, emailfinder, places, roles  # noqa: E402
 from app.main import app  # noqa: E402
 
 FAKE_PLACE = {
@@ -171,6 +171,77 @@ class EmailFinderTests(unittest.TestCase):
     def test_refuses_internal_addresses(self):
         self.assertEqual(emailfinder._fetch("http://127.0.0.1:8765/"), "")
         self.assertEqual(emailfinder._fetch("file:///etc/passwd"), "")
+
+
+class RolesTests(Base):
+    def test_all_roles_have_playbook_and_three_languages(self):
+        for lang in config.LANGUAGES:
+            lista = self.c.get(f"/api/roles?lang={lang}").json()["roles"]
+            self.assertGreaterEqual(len(lista), 7)
+            for r in lista:
+                self.assertTrue(r["name"] and r["description"])
+        for rid in roles.role_ids():
+            self.assertIn("nível sênior", roles.playbook(rid).lower())
+
+    def test_switch_role_and_reject_unknown(self):
+        self.assertEqual(self.c.get("/api/roles").json()["active"], "vendedor")
+        self.assertEqual(self.c.put("/api/role", json={"id": "social"}).status_code, 200)
+        self.assertEqual(self.c.get("/api/roles").json()["active"], "social")
+        self.assertEqual(self.c.put("/api/role", json={"id": "../../etc/passwd"}).status_code, 404)
+        self.assertIsNone(roles.playbook("../index"))
+
+
+class CnpjTests(Base):
+    def _row(self, cnae="9602501", situacao="02", uf="SP", fantasia="SALAO DA ANA", email="ana@salao.com", ddd="19", tel="991234567"):
+        r = [""] * 30
+        r[0], r[1], r[2] = "12345678", "0001", "95"
+        r[4], r[5], r[11], r[19] = fantasia, situacao, cnae, uf
+        r[13], r[14], r[15], r[17], r[18] = "RUA", "DAS FLORES", "10", "CENTRO", "13000000"
+        r[21], r[22], r[27] = ddd, tel, email
+        return r
+
+    def _write(self, folder, rows):
+        import csv
+        with open(folder / "Estabelecimentos0.csv", "w", encoding="latin-1", newline="") as f:
+            csv.writer(f, delimiter=";", quotechar='"', quoting=csv.QUOTE_ALL).writerows(rows)
+
+    def test_niche_to_cnae(self):
+        self.assertIn("9602501", cnpj.cnaes_for("Manicure"))
+        self.assertIn("9602501", cnpj.cnaes_for("cabeleireiro"))
+        self.assertEqual(cnpj.cnaes_for("9602-5/01"), ["9602501"])
+        self.assertEqual(cnpj.cnaes_for("xyz desconhecido"), [])
+
+    def test_import_filters_active_cnae_and_uf(self):
+        pasta = Path(tempfile.mkdtemp(prefix="cnpj-"))
+        self._write(pasta, [self._row(), self._row(situacao="08"), self._row(cnae="4781400"), self._row(uf="RJ")])
+        achadas = cnpj.import_from_files("manicure", "sp", folder=pasta)
+        self.assertEqual(len(achadas), 1)
+        self.assertEqual(achadas[0]["name"], "Salao Da Ana")
+        self.assertEqual(achadas[0]["email"], "ana@salao.com")
+        self.assertEqual(achadas[0]["phone"], "(19) 991234567")
+        self.assertEqual(len(cnpj.import_from_files("manicure", "", folder=pasta)), 2)  # sem UF traz SP e RJ
+
+    def test_import_errors_are_clear(self):
+        vazia = Path(tempfile.mkdtemp(prefix="cnpj-"))
+        with self.assertRaises(cnpj.CnpjError):
+            cnpj.import_from_files("manicure", folder=vazia)
+        with self.assertRaises(cnpj.CnpjError):
+            cnpj.import_from_files("ramo inexistente", folder=vazia)
+
+    def test_lead_saved_with_email_and_counted(self):
+        db.add_leads([dict(self._lead_dict())], "manicure")
+        st = self.c.get("/api/stats").json()
+        self.assertEqual(st["email"]["prospected"], 1)
+        self.assertEqual(st["whatsapp"]["prospected"], 1)
+
+    def _lead_dict(self):
+        return {"place_id": "cnpj:1", "name": "Salão", "phone": "(19) 99123-4567", "email": "a@b.com"}
+
+    def test_only_mobile_counts_for_whatsapp(self):
+        self.assertTrue(db.is_mobile("(19) 99123-4567"))
+        self.assertTrue(db.is_mobile("+55 19 99123-4567"))
+        self.assertFalse(db.is_mobile("(19) 3123-4567"))
+        self.assertFalse(db.is_mobile(""))
 
 
 class PlacesTests(unittest.TestCase):

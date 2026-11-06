@@ -102,9 +102,9 @@ def add_leads(places: list[dict], niche: str = "") -> tuple[int, int]:
     with db() as con:
         for p in places:
             cur = con.execute(
-                "INSERT OR IGNORE INTO leads (place_id, name, address, phone, website, maps_url, rating, reviews, niche, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (p.get("place_id"), p.get("name") or "?", p.get("address", ""), p.get("phone", ""),
+                "INSERT OR IGNORE INTO leads (place_id, name, address, phone, email, website, maps_url, rating, reviews, niche, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (p.get("place_id"), p.get("name") or "?", p.get("address", ""), p.get("phone", ""), p.get("email", ""),
                  p.get("website", ""), p.get("maps_url", ""), p.get("rating"), p.get("reviews"), niche, now()),
             )
             novas += cur.rowcount
@@ -216,15 +216,24 @@ def mark_replied(draft_id: int, text: str = "") -> str:
     return "ok"
 
 
+def is_mobile(phone: str) -> bool:
+    """Celular brasileiro: DDD + 9 dígitos começando em 9 (fixo não recebe WhatsApp)."""
+    d = "".join(c for c in (phone or "") if c.isdigit())
+    if d.startswith("55") and len(d) in (12, 13):
+        d = d[2:]
+    return len(d) == 11 and d[2] == "9"
+
+
 def stats() -> dict:
     """Números por canal: prospectados (contatos coletados), enviadas e respondidas."""
     with db() as con:
         def n(sql, *args):
             return con.execute(sql, args).fetchone()[0]
         out = {}
-        for canal, col in (("email", "email"), ("whatsapp", "phone")):
+        celulares = sum(is_mobile(r[0]) for r in con.execute("SELECT phone FROM leads"))
+        for canal in ("email", "whatsapp"):
             out[canal] = {
-                "prospected": n(f"SELECT COUNT(*) FROM leads WHERE TRIM(COALESCE({col}, '')) != ''"),
+                "prospected": celulares if canal == "whatsapp" else n("SELECT COUNT(*) FROM leads WHERE TRIM(COALESCE(email, '')) != ''"),
                 "sent": n("SELECT COUNT(*) FROM drafts WHERE channel = ? AND sent_at IS NOT NULL", canal),
                 "replied": n("SELECT COUNT(*) FROM drafts WHERE channel = ? AND replied_at IS NOT NULL", canal),
             }

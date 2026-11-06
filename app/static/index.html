@@ -46,10 +46,16 @@
 <body>
 <header>
   <h1 id="appname">Meu Vendedor</h1>
+  <span class="badge" id="rolebadge"></span>
   <select id="lang" style="width:auto"></select>
 </header>
 <nav id="tabs"></nav>
 <main>
+  <section id="s-role"><div class="card">
+    <h2 data-i="role.title"></h2><p class="hint" data-i="role.hint"></p>
+    <div class="row" id="roles-grid"></div><span class="msg" id="m-role"></span>
+  </div></section>
+
   <section id="s-overview"><div class="card">
     <h2 data-i="overview.title"></h2><p class="hint" data-i="overview.note"></p>
     <div class="row" id="stats"></div>
@@ -74,6 +80,12 @@
       <div><label data-i="search.location"></label><input type="text" id="q_location"></div>
       <div style="max-width:160px"><label data-i="search.max"></label><input type="number" id="q_max" min="1" max="60" value="20"></div></div>
     <div class="actions"><button class="btn" id="do-search" data-i="search.go"></button><span class="msg" id="m-search"></span></div>
+  </div>
+  <div class="card">
+    <h2 data-i="cnpj.title"></h2><p class="hint" data-i="cnpj.hint"></p>
+    <div class="row"><div><label data-i="search.niche"></label><input type="text" id="c_niche"></div>
+      <div style="max-width:160px"><label data-i="cnpj.uf"></label><input type="text" id="c_uf" maxlength="2"></div></div>
+    <div class="actions"><button class="btn" id="do-cnpj" data-i="cnpj.go"></button><span class="msg" id="m-cnpj"></span></div>
   </div></section>
 
   <section id="s-leads"><div class="card">
@@ -115,7 +127,7 @@
 
 <script>
 "use strict";
-const TABS = ["overview", "profile", "search", "leads", "drafts", "settings"];
+const TABS = ["role", "overview", "profile", "search", "leads", "drafts", "settings"];
 const LANGS = ["pt", "en", "es"];
 let T = {}, lang = "pt";
 
@@ -167,12 +179,12 @@ function buildHeads() {
 }
 
 // ---------- abas ----------
-let currentTab = "overview";
+let currentTab = "role";
 function showTab(k) {
   currentTab = k;
   TABS.forEach((x) => $("s-" + x).classList.toggle("on", x === k));
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === k));
-  if (k === "overview") loadStats(); if (k === "leads") loadLeads(); if (k === "drafts") loadDrafts(); if (k === "settings") loadSettings();
+  if (k === "role") loadRoles(); if (k === "overview") loadStats(); if (k === "leads") loadLeads(); if (k === "drafts") loadDrafts(); if (k === "settings") loadSettings();
 }
 
 // ---------- perfil ----------
@@ -191,6 +203,25 @@ $("do-search").onclick = guard("m-search", async () => {
     say("m-search", t("search.result", { new: r.new, total: r.total }), true);
   } finally { b.disabled = false; }
 });
+
+$("do-cnpj").onclick = guard("m-cnpj", async () => {
+  const b = $("do-cnpj"); b.disabled = true; say("m-cnpj", t("search.running"), true);
+  try {
+    const r = await api("POST", "/api/cnpj-import", { niche: $("c_niche").value, uf: $("c_uf").value });
+    say("m-cnpj", t("cnpj.result", { new: r.new, total: r.total }), true);
+  } finally { b.disabled = false; }
+});
+
+// ---------- função ativa ----------
+async function loadRoles() {
+  const r = await api("GET", "/api/roles?lang=" + lang);
+  const act = r.roles.find((x) => x.id === r.active);
+  $("rolebadge").textContent = act ? act.icon + " " + act.name : "";
+  $("roles-grid").replaceChildren(...r.roles.map((x) => h("div", { class: "card", style: "flex:1;min-width:260px;" + (x.id === r.active ? "border-color:var(--accent)" : "") },
+    h("h2", {}, x.icon + " " + x.name), h("p", { class: "hint" }, x.description),
+    x.id === r.active ? h("span", { class: "badge" }, t("role.active_now"))
+      : h("button", { class: "btn", onclick: guard("m-role", async () => { await api("PUT", "/api/role", { id: x.id }); loadRoles(); }) }, t("role.activate")))));
+}
 
 // ---------- empresas ----------
 async function loadLeads() {
@@ -302,7 +333,7 @@ $("lang").onchange = (e) => setLang(e.target.value);
   let saved = null; try { saved = localStorage.getItem("lang"); } catch (e) {}
   const nav = (navigator.language || "pt").slice(0, 2);
   await setLang(saved || (LANGS.includes(nav) ? nav : "pt"));
-  loadProfile(); loadStats();
+  loadProfile(); loadStats(); loadRoles();
 })();
 </script>
 </body>

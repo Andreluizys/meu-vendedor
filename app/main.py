@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from . import config, db, drafts as drafts_mod, emailfinder, places
+from . import cnpj, config, db, drafts as drafts_mod, emailfinder, places, roles
 
 STATIC = Path(__file__).parent / "static"
 LOCALES = Path(__file__).parent / "locales"
@@ -86,6 +86,16 @@ class DraftPatch(BaseModel):
     subject: str | None = Field(None, max_length=300)
     body: str | None = Field(None, min_length=1, max_length=5000)
     status: Literal["pending", "approved", "rejected"] | None = None
+
+
+class RoleIn(BaseModel):
+    id: str = Field(..., max_length=40)
+
+
+class CnpjIn(BaseModel):
+    niche: str = Field(..., min_length=1, max_length=200)
+    uf: str = Field("", max_length=2)
+    limit: int = Field(500, ge=1, le=5000)
 
 
 class ReplyIn(BaseModel):
@@ -274,3 +284,29 @@ def draft_replied(draft_id: int, body: ReplyIn):
 @app.get("/api/stats")
 def stats():
     return db.stats()
+
+
+# ---------- função ativa (marqueteiro, vendedor, designer...) ----------
+
+@app.get("/api/roles")
+def get_roles(lang: str = "pt"):
+    return {"active": roles.get_active(), "roles": roles.list_roles(lang)}
+
+
+@app.put("/api/role")
+def put_role(r: RoleIn):
+    if not roles.set_active(r.id):
+        raise HTTPException(404, "role not found")
+    return {"active": r.id}
+
+
+# ---------- empresas pelos Dados Abertos do CNPJ ----------
+
+@app.post("/api/cnpj-import")
+def cnpj_import(c: CnpjIn):
+    try:
+        found = cnpj.import_from_files(c.niche, c.uf, c.limit)
+    except cnpj.CnpjError as e:
+        raise HTTPException(400, str(e))
+    new, total = db.add_leads(found, c.niche)
+    return {"new": new, "total": total, "folder": str(cnpj.CNPJ_DIR)}

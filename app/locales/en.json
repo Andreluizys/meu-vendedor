@@ -98,5 +98,16 @@
   "btn.mark_reply": "Record reply",
   "reply.label": "Reply received (optional)",
   "sent.badge": "Sent",
-  "replied.badge": "Replied"
+  "replied.badge": "Replied",
+  "tab.role": "Role",
+  "role.title": "What role will your employee work in today?",
+  "role.hint": "When you pick one, the skill acts with senior-level knowledge of that area. You can switch anytime.",
+  "role.activate": "Activate",
+  "role.current": "Active role",
+  "role.active_now": "Active now",
+  "cnpj.title": "Companies from Brazil's Federal Revenue (CNPJ)",
+  "cnpj.hint": "Reads the Establishments files you downloaded from the CNPJ open-data portal and placed in data/cnpj. Brings the registered email and phone.",
+  "cnpj.uf": "State (e.g. SP)",
+  "cnpj.go": "Import from CNPJ",
+  "cnpj.result": "{new} new companies out of {total} found."
 }
