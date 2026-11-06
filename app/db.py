@@ -53,7 +53,7 @@ def _migrate(con) -> None:
     """Acrescenta colunas novas em bancos criados por versões anteriores."""
     novas = {
         "leads": {"email": "TEXT DEFAULT ''"},
-        "drafts": {"sent_at": "TEXT", "replied_at": "TEXT", "reply_text": "TEXT DEFAULT ''"},
+        "drafts": {"sent_at": "TEXT", "replied_at": "TEXT", "reply_text": "TEXT DEFAULT ''", "thread_id": "TEXT DEFAULT ''"},
     }
     for tabela, colunas in novas.items():
         existentes = {r["name"] for r in con.execute(f"PRAGMA table_info({tabela})")}
@@ -161,7 +161,7 @@ def add_draft(lead_id: int, channel: str, body: str, subject: str = "") -> int |
 
 
 def list_drafts(status: str | None = None) -> list[dict]:
-    sql = ("SELECT d.*, l.name AS lead_name, l.phone AS lead_phone, l.website AS lead_website "
+    sql = ("SELECT d.*, l.name AS lead_name, l.phone AS lead_phone, l.website AS lead_website, l.email AS lead_email "
            "FROM drafts d JOIN leads l ON l.id = d.lead_id")
     with db() as con:
         if status:
@@ -238,3 +238,30 @@ def stats() -> dict:
                 "replied": n("SELECT COUNT(*) FROM drafts WHERE channel = ? AND replied_at IS NOT NULL", canal),
             }
     return out
+
+
+# ---------- Gmail: apoio ao envio e à leitura de respostas ----------
+
+def get_draft(draft_id: int) -> dict | None:
+    with db() as con:
+        row = con.execute("SELECT d.*, l.email AS lead_email FROM drafts d JOIN leads l ON l.id = d.lead_id WHERE d.id = ?",
+                          (draft_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def set_thread(draft_id: int, thread_id: str) -> None:
+    with db() as con:
+        con.execute("UPDATE drafts SET thread_id = ? WHERE id = ?", (thread_id, draft_id))
+
+
+def sent_times(channel: str) -> list[str]:
+    with db() as con:
+        return [r[0] for r in con.execute("SELECT sent_at FROM drafts WHERE channel = ? AND sent_at IS NOT NULL", (channel,))]
+
+
+def pending_threads() -> list[dict]:
+    """E-mails enviados pelo app, com conversa conhecida, ainda sem resposta registrada."""
+    with db() as con:
+        rows = con.execute("SELECT id, thread_id FROM drafts WHERE channel = 'email' AND sent_at IS NOT NULL "
+                           "AND replied_at IS NULL AND COALESCE(thread_id, '') != ''").fetchall()
+    return [dict(r) for r in rows]

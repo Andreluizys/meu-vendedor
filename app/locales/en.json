@@ -109,5 +109,20 @@
   "cnpj.hint": "Reads the Establishments files you downloaded from the CNPJ open-data portal and placed in data/cnpj. Brings the registered email and phone.",
   "cnpj.uf": "State (e.g. SP)",
   "cnpj.go": "Import from CNPJ",
-  "cnpj.result": "{new} new companies out of {total} found."
+  "cnpj.result": "{new} new companies out of {total} found.",
+  "gmail.title": "Gmail (send and read replies)",
+  "gmail.help": "Create an OAuth client of type Desktop app in Google Cloud (Gmail API enabled) with redirect http://127.0.0.1:8765/api/gmail/callback, and paste the ID and secret here. They stay on this computer only, unencrypted.",
+  "gmail.client_id": "Client ID",
+  "gmail.client_secret": "Client secret",
+  "gmail.save": "Save credentials",
+  "gmail.connect": "Connect Gmail",
+  "gmail.disconnect": "Disconnect",
+  "gmail.connected": "Connected as {email}.",
+  "gmail.notconnected": "Gmail not connected.",
+  "gmail.opened": "Authorize in the tab that opened, then come back.",
+  "btn.send_gmail": "Send with Gmail",
+  "btn.check_replies": "Check replies",
+  "replies.result": "{replies} replies in {checked} conversations.",
+  "confirm.send": "Send this email now?",
+  "no.email": "No email: use Find email in Companies."
 }

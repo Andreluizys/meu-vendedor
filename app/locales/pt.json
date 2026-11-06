@@ -109,5 +109,20 @@
   "cnpj.hint": "Lê os arquivos de Estabelecimentos que você baixou do portal de dados abertos do CNPJ e colocou na pasta data/cnpj. Traz e-mail e telefone do cadastro.",
   "cnpj.uf": "Estado (ex.: SP)",
   "cnpj.go": "Importar do CNPJ",
-  "cnpj.result": "{new} empresas novas de {total} encontradas."
+  "cnpj.result": "{new} empresas novas de {total} encontradas.",
+  "gmail.title": "Gmail (enviar e ler respostas)",
+  "gmail.help": "Crie um cliente OAuth do tipo App para computador no Google Cloud (Gmail API ativada), com o redirecionamento http://127.0.0.1:8765/api/gmail/callback, e cole o ID e o segredo aqui. Ficam só neste computador, sem criptografia.",
+  "gmail.client_id": "ID do cliente",
+  "gmail.client_secret": "Segredo do cliente",
+  "gmail.save": "Salvar credenciais",
+  "gmail.connect": "Conectar ao Gmail",
+  "gmail.disconnect": "Desconectar",
+  "gmail.connected": "Conectado como {email}.",
+  "gmail.notconnected": "Gmail não conectado.",
+  "gmail.opened": "Autorize na aba que abriu e volte aqui.",
+  "btn.send_gmail": "Enviar pelo Gmail",
+  "btn.check_replies": "Verificar respostas",
+  "replies.result": "{replies} respostas em {checked} conversas.",
+  "confirm.send": "Enviar este e-mail agora?",
+  "no.email": "Sem e-mail: use Buscar e-mail em Empresas."
 }

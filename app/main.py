@@ -1,15 +1,16 @@
 """API e painel local (FastAPI). Só responde na própria máquina."""
 import json
 import os
+from html import escape as html_escape
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from . import cnpj, config, db, drafts as drafts_mod, emailfinder, places, roles
+from . import cnpj, config, db, drafts as drafts_mod, emailfinder, gmail, limits, places, roles
 
 STATIC = Path(__file__).parent / "static"
 LOCALES = Path(__file__).parent / "locales"
@@ -86,6 +87,11 @@ class DraftPatch(BaseModel):
     subject: str | None = Field(None, max_length=300)
     body: str | None = Field(None, min_length=1, max_length=5000)
     status: Literal["pending", "approved", "rejected"] | None = None
+
+
+class GmailClientIn(BaseModel):
+    client_id: str = Field("", max_length=300)
+    client_secret: str = Field("", max_length=300)
 
 
 class RoleIn(BaseModel):
@@ -310,3 +316,75 @@ def cnpj_import(c: CnpjIn):
         raise HTTPException(400, str(e))
     new, total = db.add_leads(found, c.niche)
     return {"new": new, "total": total, "folder": str(cnpj.CNPJ_DIR)}
+
+
+# ---------- Gmail ----------
+
+@app.get("/api/gmail/status")
+def gmail_status():
+    return gmail.status()
+
+
+@app.put("/api/gmail/client")
+def gmail_client(c: GmailClientIn):
+    db.set_setting("gmail_client", {"client_id": c.client_id.strip(), "client_secret": c.client_secret.strip()})
+    return gmail.status()
+
+
+@app.get("/api/gmail/connect")
+def gmail_connect():
+    try:
+        return {"url": gmail.auth_url()}
+    except gmail.GmailError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/gmail/callback")
+def gmail_callback(code: str = "", state: str = "", error: str = ""):
+    if error or not code:
+        return HTMLResponse("<h3>Login cancelado.</h3><p>Pode fechar esta aba.</p>", status_code=400)
+    try:
+        email = gmail.handle_callback(code, state)
+    except gmail.GmailError as e:
+        return HTMLResponse(f"<h3>Não deu certo.</h3><p>{html_escape(str(e))}</p>", status_code=400)
+    return HTMLResponse(f"<h3>Gmail conectado: {html_escape(email)}</h3><p>Pode fechar esta aba e voltar ao painel.</p>")
+
+
+@app.post("/api/gmail/disconnect")
+def gmail_disconnect():
+    gmail.disconnect()
+    return gmail.status()
+
+
+@app.post("/api/gmail/check-replies")
+def gmail_check_replies():
+    try:
+        return gmail.check_replies()
+    except gmail.GmailError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/drafts/{draft_id}/send")
+def send_draft(draft_id: int):
+    d = db.get_draft(draft_id)
+    if not d:
+        raise HTTPException(404, "draft not found")
+    if d["channel"] != "email":
+        raise HTTPException(409, "only email drafts can be sent from here")
+    if d["status"] != "approved":
+        raise HTTPException(409, "approve the draft before sending it")
+    if d["sent_at"]:
+        raise HTTPException(409, "this draft was already sent")
+    if not (d["lead_email"] or "").strip():
+        raise HTTPException(409, "this company has no email yet")
+    settings = SendSettings(**db.get_setting("send_settings", {})).model_dump()
+    motivo = limits.check(settings, db.sent_times("email"), limits.now_local())
+    if motivo:
+        raise HTTPException(429, motivo)
+    try:
+        thread = gmail.send(d["lead_email"].strip(), d["subject"] or "", d["body"])
+    except gmail.GmailError as e:
+        raise HTTPException(400, str(e))
+    db.set_thread(draft_id, thread)
+    db.mark_sent(draft_id)
+    return {"ok": True, "thread_id": thread}

@@ -100,6 +100,7 @@
     <div class="row" style="align-items:center"><h2 data-i="drafts.title" style="flex:3"></h2>
       <select id="drafts-filter" style="max-width:180px"></select></div>
     <p class="hint" data-i="drafts.note"></p>
+    <div class="actions" style="margin:0 0 12px"><button class="btn ghost" id="check-replies" data-i="btn.check_replies"></button><span class="msg" id="m-replies"></span></div>
     <div id="drafts-list"></div>
     <p class="hint" id="drafts-empty" data-i="drafts.empty"></p>
   </div></section>
@@ -117,6 +118,13 @@
       <div class="row"><div><label data-i="settings.typing_min"></label><input type="number" id="s_typing_min_s" min="0" max="30"></div>
         <div><label data-i="settings.typing_max"></label><input type="number" id="s_typing_max_s" min="0" max="30"></div></div>
       <div class="actions"><button class="btn" id="save-send" data-i="btn.save"></button><span class="msg" id="m-send"></span></div>
+    </div>
+    <div class="card"><h2 data-i="gmail.title"></h2><p class="hint" data-i="gmail.help"></p>
+      <p class="hint" id="gmail-status"></p>
+      <div class="row"><div><label data-i="gmail.client_id"></label><input type="text" id="g_id" autocomplete="off"></div>
+        <div><label data-i="gmail.client_secret"></label><input type="password" id="g_secret" autocomplete="off"></div></div>
+      <div class="actions"><button class="btn ghost" id="g-save" data-i="gmail.save"></button><button class="btn" id="g-connect" data-i="gmail.connect"></button>
+        <button class="btn bad" id="g-off" data-i="gmail.disconnect"></button><span class="msg" id="m-gmail"></span></div>
     </div>
     <div class="card"><h2 data-i="api.title"></h2><p class="hint" data-i="api.help"></p>
       <label data-i="api.label"></label><input type="password" id="k_key" autocomplete="off">
@@ -274,12 +282,18 @@ async function loadDrafts() {
         h("button", { class: "btn ghost", onclick: act(undefined) }, t("btn.save")),
         h("button", { class: "btn good", onclick: act("approved") }, t("btn.approve")),
         h("button", { class: "btn bad", onclick: act("rejected") }, t("btn.reject")),
-        d.status === "approved" && !d.sent_at ? h("button", { class: "btn", onclick: async () => { try { await api("POST", "/api/drafts/" + d.id + "/sent"); loadDrafts(); } catch (e) { msg.textContent = e.message; msg.className = "msg err"; } } }, t("btn.mark_sent")) : null,
+        d.status === "approved" && !d.sent_at && d.channel === "email" ? (d.lead_email
+          ? h("button", { class: "btn", onclick: async () => { if (!confirm(t("confirm.send"))) return; try { await api("POST", "/api/drafts/" + d.id + "/send"); loadDrafts(); } catch (e) { msg.textContent = e.message; msg.className = "msg err"; } } }, t("btn.send_gmail"))
+          : h("span", { class: "msg err" }, t("no.email"))) : null,
+        d.status === "approved" && !d.sent_at ? h("button", { class: "btn ghost", onclick: async () => { try { await api("POST", "/api/drafts/" + d.id + "/sent"); loadDrafts(); } catch (e) { msg.textContent = e.message; msg.className = "msg err"; } } }, t("btn.mark_sent")) : null,
         h("button", { class: "btn bad", onclick: async () => { if (confirm(t("confirm.delete"))) { await api("DELETE", "/api/drafts/" + d.id); loadDrafts(); } } }, t("btn.delete")), msg),
       d.sent_at ? replyBox(d) : null);
   }));
 }
 $("drafts-filter").onchange = loadDrafts;
+$("check-replies").onclick = guard("m-replies", async () => {
+  const r = await api("POST", "/api/gmail/check-replies"); say("m-replies", t("replies.result", r), true); loadDrafts();
+});
 function replyBox(d) {
   const txt = h("textarea", { style: "min-height:60px" }); txt.value = d.reply_text || "";
   const m = h("span", { class: "msg" });
@@ -309,6 +323,7 @@ async function loadSettings() {
   s.days.forEach((v, i) => { daysState[i] = v; const c = $("day" + i); if (c) c.checked = v; });
   $("s_hour_start").value = s.hour_start; $("s_hour_end").value = s.hour_end;
   $("s_typing").checked = s.typing_simulation; $("s_typing_min_s").value = s.typing_min_s; $("s_typing_max_s").value = s.typing_max_s;
+  loadGmail();
   const k = await api("GET", "/api/api-key");
   $("k_key").placeholder = k.set ? t("api.set") : t("api.notset");
 }
@@ -325,6 +340,20 @@ $("save-key").onclick = guard("m-key", async () => {
   await api("PUT", "/api/api-key", { api_key: $("k_key").value }); $("k_key").value = "";
   say("m-key", t("saved"), true); loadSettings();
 });
+
+async function loadGmail() {
+  const g = await api("GET", "/api/gmail/status");
+  $("gmail-status").textContent = g.connected ? t("gmail.connected", { email: g.email }) : t("gmail.notconnected");
+  $("g_id").placeholder = g.configured ? "••••••••" : "";
+}
+$("g-save").onclick = guard("m-gmail", async () => {
+  await api("PUT", "/api/gmail/client", { client_id: $("g_id").value, client_secret: $("g_secret").value });
+  $("g_id").value = ""; $("g_secret").value = ""; say("m-gmail", t("saved"), true); loadGmail();
+});
+$("g-connect").onclick = guard("m-gmail", async () => {
+  const r = await api("GET", "/api/gmail/connect"); window.open(r.url, "_blank", "noopener"); say("m-gmail", t("gmail.opened"), true);
+});
+$("g-off").onclick = guard("m-gmail", async () => { await api("POST", "/api/gmail/disconnect"); loadGmail(); });
 
 // ---------- início ----------
 $("lang").onchange = (e) => setLang(e.target.value);

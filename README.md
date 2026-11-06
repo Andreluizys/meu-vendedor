@@ -4,9 +4,9 @@ Skill do Claude que funciona como um funcionário/vendedor virtual para prospec�
 
 Painel e skill em **português, inglês e espanhol**.
 
-## Status (v0.2)
-Pronto: painel local, entrevista pela skill, **7 funções pré-definidas de nível sênior** (escolhidas na aba Função), busca no Google Maps (API Places oficial), importação dos Dados Abertos do CNPJ, busca de e-mail no site da empresa, rascunhos de e-mail e WhatsApp para aprovar, contadores de prospectados/enviados/respondidos e configurações de envio (guardadas).
-**Ainda não existe:** envio de e-mail (Gmail), WhatsApp por QR Code, modo automático, raspagem do Maps. Nada é enviado nesta versão.
+## Status (v0.3)
+Pronto: painel local, entrevista pela skill, **7 funções pré-definidas de nível sênior** (escolhidas na aba Função), busca no Google Maps (API Places oficial), importação dos Dados Abertos do CNPJ, busca de e-mail no site da empresa, rascunhos de e-mail e WhatsApp para aprovar, **envio pelo Gmail com leitura das respostas**, contadores de prospectados/enviados/respondidos e configurações de envio (guardadas).
+**Ainda não existe:** WhatsApp por QR Code, modo automático (o envio é sempre um clique seu em mensagem aprovada) e raspagem do Maps.
 
 ## Instalação (Windows)
 1. Tenha o Python 3.10+ instalado.
@@ -22,6 +22,13 @@ Na aba **Função** você escolhe em qual papel o funcionário trabalha hoje: Ar
 
 ## Empresas pela Receita Federal (CNPJ)
 Baixe os arquivos **Estabelecimentos** do portal de dados abertos do CNPJ, coloque em `data/cnpj/` e use a aba Buscar empresas (ou `python scripts/mv.py cnpj-import --niche manicure --uf SP`). O ramo vira código CNAE (a tabela é aproximada; aceita também o CNAE de 7 dígitos). O e-mail do cadastro costuma ser do contador. Respeite a LGPD e os pedidos de descadastro.
+
+## Gmail (enviar e ler respostas)
+1. No Google Cloud, ative a **Gmail API**, configure a tela de permissão e crie um **ID do cliente OAuth do tipo App para computador**. Adicione como URI de redirecionamento `http://127.0.0.1:8765/api/gmail/callback`. Em modo de teste, adicione seu e-mail como usuário de teste.
+2. No painel, aba **Configurações > Gmail**: cole o ID e o segredo, salve e clique em **Conectar ao Gmail**.
+3. Em **Mensagens**, aprove um rascunho de e-mail e clique em **Enviar pelo Gmail**. O envio respeita dias, horário, limite diário e intervalo mínimo das configurações.
+4. **Verificar respostas** lê, nas conversas que o app iniciou, quem respondeu e marca no painel.
+Permissões pedidas: enviar e ler e-mails (`gmail.send`, `gmail.readonly`). O app só olha as conversas que ele mesmo começou. As credenciais ficam em `data/`, sem criptografia.
 
 ## Contadores
 "Prospectados" conta e-mails encontrados e, no WhatsApp, só números de celular (telefone fixo não recebe WhatsApp). "Enviadas" e "respondidas" são registradas por você nas Mensagens até as integrações do Gmail e do WhatsApp existirem.
