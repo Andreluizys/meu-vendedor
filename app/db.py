@@ -49,6 +49,19 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _migrate(con) -> None:
+    """Acrescenta colunas novas em bancos criados por versões anteriores."""
+    novas = {
+        "leads": {"email": "TEXT DEFAULT ''"},
+        "drafts": {"sent_at": "TEXT", "replied_at": "TEXT", "reply_text": "TEXT DEFAULT ''"},
+    }
+    for tabela, colunas in novas.items():
+        existentes = {r["name"] for r in con.execute(f"PRAGMA table_info({tabela})")}
+        for nome, tipo in colunas.items():
+            if nome not in existentes:
+                con.execute(f"ALTER TABLE {tabela} ADD COLUMN {nome} {tipo}")
+
+
 @contextmanager
 def db():
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -56,6 +69,7 @@ def db():
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
     con.executescript(SCHEMA)
+    _migrate(con)
     try:
         yield con
         con.commit()
@@ -112,8 +126,10 @@ def get_lead(lead_id: int) -> dict | None:
     return dict(row) if row else None
 
 
-def update_lead(lead_id: int, status: str | None = None, notes: str | None = None) -> bool:
+def update_lead(lead_id: int, status: str | None = None, notes: str | None = None, email: str | None = None) -> bool:
     sets, vals = [], []
+    if email is not None:
+        sets.append("email = ?"); vals.append(email)
     if status is not None:
         sets.append("status = ?"); vals.append(status)
     if notes is not None:
@@ -168,3 +184,48 @@ def update_draft(draft_id: int, subject: str | None = None, body: str | None = N
 def delete_draft(draft_id: int) -> bool:
     with db() as con:
         return con.execute("DELETE FROM drafts WHERE id = ?", (draft_id,)).rowcount > 0
+
+
+# ---------- envio, respostas e números ----------
+
+def mark_sent(draft_id: int) -> str:
+    """Registra que a mensagem foi enviada. Devolve "ok", "missing" ou "not_approved"."""
+    with db() as con:
+        row = con.execute("SELECT status, lead_id FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if not row:
+            return "missing"
+        if row["status"] != "approved":
+            return "not_approved"
+        ts = now()
+        con.execute("UPDATE drafts SET sent_at = COALESCE(sent_at, ?), updated_at = ? WHERE id = ?", (ts, ts, draft_id))
+        con.execute("UPDATE leads SET status = 'contacted' WHERE id = ? AND status IN ('new', 'approved')", (row["lead_id"],))
+    return "ok"
+
+
+def mark_replied(draft_id: int, text: str = "") -> str:
+    """Registra a resposta recebida. Devolve "ok", "missing" ou "not_sent"."""
+    with db() as con:
+        row = con.execute("SELECT sent_at FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if not row:
+            return "missing"
+        if not row["sent_at"]:
+            return "not_sent"
+        ts = now()
+        con.execute("UPDATE drafts SET replied_at = COALESCE(replied_at, ?), reply_text = ?, updated_at = ? WHERE id = ?",
+                    (ts, text, ts, draft_id))
+    return "ok"
+
+
+def stats() -> dict:
+    """Números por canal: prospectados (contatos coletados), enviadas e respondidas."""
+    with db() as con:
+        def n(sql, *args):
+            return con.execute(sql, args).fetchone()[0]
+        out = {}
+        for canal, col in (("email", "email"), ("whatsapp", "phone")):
+            out[canal] = {
+                "prospected": n(f"SELECT COUNT(*) FROM leads WHERE TRIM(COALESCE({col}, '')) != ''"),
+                "sent": n("SELECT COUNT(*) FROM drafts WHERE channel = ? AND sent_at IS NOT NULL", canal),
+                "replied": n("SELECT COUNT(*) FROM drafts WHERE channel = ? AND replied_at IS NOT NULL", canal),
+            }
+    return out

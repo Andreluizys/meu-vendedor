@@ -36,6 +36,7 @@
   th { color:var(--muted); font-weight:600; font-size:12px; }
   .tablewrap { overflow-x:auto; }
   .msg { font-size:13px; margin-left:6px; } .msg.err { color:var(--bad); } .msg.ok { color:var(--good); }
+  .stat { text-align:center; padding:14px; border:1px solid var(--line); border-radius:10px; } .stat b { display:block; font-size:28px; } .stat span { color:var(--muted); font-size:13px; }
   .badge { font-size:12px; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
   .days { display:flex; gap:10px; flex-wrap:wrap; } .days label { display:flex; gap:4px; align-items:center; margin:0; color:var(--text); }
   .check { display:flex; gap:8px; align-items:center; margin-top:12px; color:var(--text); }
@@ -49,6 +50,11 @@
 </header>
 <nav id="tabs"></nav>
 <main>
+  <section id="s-overview"><div class="card">
+    <h2 data-i="overview.title"></h2><p class="hint" data-i="overview.note"></p>
+    <div class="row" id="stats"></div>
+  </div></section>
+
   <section id="s-profile"><div class="card">
     <h2 data-i="profile.title"></h2><p class="hint" data-i="profile.hint"></p>
     <div class="row"><div><label data-i="profile.owner_name"></label><input type="text" id="p_owner_name"></div>
@@ -109,7 +115,7 @@
 
 <script>
 "use strict";
-const TABS = ["profile", "search", "leads", "drafts", "settings"];
+const TABS = ["overview", "profile", "search", "leads", "drafts", "settings"];
 const LANGS = ["pt", "en", "es"];
 let T = {}, lang = "pt";
 
@@ -157,16 +163,16 @@ function fillSelects() {
   $("s_days").replaceChildren(...[0,1,2,3,4,5,6].map((i) => h("label", {}, h("input", { type: "checkbox", id: "day" + i, checked: daysState[i] ? "" : null, onchange: (e) => { daysState[i] = e.target.checked; } }), t("days." + i))));
 }
 function buildHeads() {
-  $("leads-head").replaceChildren(...["name","address","phone","website","rating","status","actions"].map((c) => h("th", {}, t("col." + c))));
+  $("leads-head").replaceChildren(...["name","address","phone","email","website","rating","status","actions"].map((c) => h("th", {}, t("col." + c))));
 }
 
 // ---------- abas ----------
-let currentTab = "profile";
+let currentTab = "overview";
 function showTab(k) {
   currentTab = k;
   TABS.forEach((x) => $("s-" + x).classList.toggle("on", x === k));
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === k));
-  if (k === "leads") loadLeads(); if (k === "drafts") loadDrafts(); if (k === "settings") loadSettings();
+  if (k === "overview") loadStats(); if (k === "leads") loadLeads(); if (k === "drafts") loadDrafts(); if (k === "settings") loadSettings();
 }
 
 // ---------- perfil ----------
@@ -197,7 +203,12 @@ async function loadLeads() {
     const site = l.website ? h("a", { href: /^https?:\/\//i.test(l.website) ? l.website : "#", target: "_blank", rel: "noopener noreferrer" }, l.website.replace(/^https?:\/\/(www\.)?/i, "").slice(0, 28)) : "";
     const name = l.maps_url && /^https?:\/\//i.test(l.maps_url) ? h("a", { href: l.maps_url, target: "_blank", rel: "noopener noreferrer" }, l.name) : l.name;
     const gen = (ch) => guard("m-leads", async () => { await api("POST", "/api/leads/" + l.id + "/draft", { channel: ch }); say("m-leads", t("saved"), true); });
-    return h("tr", {}, h("td", {}, name), h("td", {}, l.address), h("td", {}, l.phone), h("td", {}, site),
+    const findMail = guard("m-leads", async () => {
+      const r = await api("POST", "/api/leads/" + l.id + "/find-email");
+      if (r.email) loadLeads(); else say("m-leads", t("email.notfound"), false);
+    });
+    const mailCell = l.email ? l.email : (l.website ? h("button", { class: "btn ghost", onclick: findMail }, t("btn.find_email")) : "");
+    return h("tr", {}, h("td", {}, name), h("td", {}, l.address), h("td", {}, l.phone), h("td", {}, mailCell), h("td", {}, site),
       h("td", {}, l.rating ? l.rating + " (" + (l.reviews ?? 0) + ")" : ""), h("td", {}, sel),
       h("td", {}, h("div", { class: "actions", style: "margin:0" },
         h("button", { class: "btn ghost", onclick: gen("email") }, t("btn.draft_email")),
@@ -224,17 +235,39 @@ async function loadDrafts() {
     };
     return h("div", { class: "card", style: "background:var(--bg)" },
       h("div", { class: "row", style: "align-items:center" },
-        h("strong", {}, d.lead_name), h("span", { class: "badge" }, t("channel." + d.channel)), h("span", { class: "badge" }, t("draftstatus." + d.status))),
+        h("strong", {}, d.lead_name), h("span", { class: "badge" }, t("channel." + d.channel)), h("span", { class: "badge" }, t("draftstatus." + d.status)),
+        d.sent_at ? h("span", { class: "badge" }, t("sent.badge")) : null, d.replied_at ? h("span", { class: "badge" }, t("replied.badge")) : null),
       subj ? [h("label", {}, t("draft.subject")), subj] : null,
       h("label", {}, t("draft.body")), body,
       h("div", { class: "actions" },
         h("button", { class: "btn ghost", onclick: act(undefined) }, t("btn.save")),
         h("button", { class: "btn good", onclick: act("approved") }, t("btn.approve")),
         h("button", { class: "btn bad", onclick: act("rejected") }, t("btn.reject")),
-        h("button", { class: "btn bad", onclick: async () => { if (confirm(t("confirm.delete"))) { await api("DELETE", "/api/drafts/" + d.id); loadDrafts(); } } }, t("btn.delete")), msg));
+        d.status === "approved" && !d.sent_at ? h("button", { class: "btn", onclick: async () => { try { await api("POST", "/api/drafts/" + d.id + "/sent"); loadDrafts(); } catch (e) { msg.textContent = e.message; msg.className = "msg err"; } } }, t("btn.mark_sent")) : null,
+        h("button", { class: "btn bad", onclick: async () => { if (confirm(t("confirm.delete"))) { await api("DELETE", "/api/drafts/" + d.id); loadDrafts(); } } }, t("btn.delete")), msg),
+      d.sent_at ? replyBox(d) : null);
   }));
 }
 $("drafts-filter").onchange = loadDrafts;
+function replyBox(d) {
+  const txt = h("textarea", { style: "min-height:60px" }); txt.value = d.reply_text || "";
+  const m = h("span", { class: "msg" });
+  return h("div", {}, h("label", {}, t("reply.label")), txt,
+    h("div", { class: "actions" }, h("button", { class: "btn ghost", onclick: async () => {
+      try { await api("POST", "/api/drafts/" + d.id + "/replied", { text: txt.value }); loadDrafts(); } catch (e) { m.textContent = e.message; m.className = "msg err"; }
+    } }, t("btn.mark_reply")), m));
+}
+
+// ---------- resumo ----------
+async function loadStats() {
+  const s = await api("GET", "/api/stats");
+  const card = (title, kind, v) => h("div", { class: "card", style: "flex:1;min-width:280px" }, h("h2", {}, title),
+    h("div", { class: "row" },
+      h("div", { class: "stat" }, h("b", {}, v.prospected), h("span", {}, t("stat.prospected_" + kind))),
+      h("div", { class: "stat" }, h("b", {}, v.sent), h("span", {}, t("stat.sent"))),
+      h("div", { class: "stat" }, h("b", {}, v.replied), h("span", {}, t("stat.replied")))));
+  $("stats").replaceChildren(card(t("overview.email"), "email", s.email), card(t("overview.whatsapp"), "whatsapp", s.whatsapp));
+}
 
 // ---------- configurações ----------
 const daysState = [true, true, true, true, true, false, false];
@@ -269,7 +302,7 @@ $("lang").onchange = (e) => setLang(e.target.value);
   let saved = null; try { saved = localStorage.getItem("lang"); } catch (e) {}
   const nav = (navigator.language || "pt").slice(0, 2);
   await setLang(saved || (LANGS.includes(nav) ? nav : "pt"));
-  loadProfile();
+  loadProfile(); loadStats();
 })();
 </script>
 </body>

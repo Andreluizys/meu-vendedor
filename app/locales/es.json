@@ -81,5 +81,22 @@
   "days.5": "Sáb",
   "days.6": "Dom",
   "saved": "Guardado.",
-  "error.generic": "Algo salió mal."
+  "error.generic": "Algo salió mal.",
+  "tab.overview": "Resumen",
+  "overview.title": "Resumen de la prospección",
+  "overview.email": "Correo",
+  "overview.whatsapp": "WhatsApp",
+  "stat.prospected_email": "Correos prospectados",
+  "stat.prospected_whatsapp": "Números prospectados",
+  "stat.sent": "Enviados",
+  "stat.replied": "Respondidos",
+  "overview.note": "Enviados y respondidos los registras tú en Mensajes. La lectura automática de respuestas llegará con la integración de Gmail y WhatsApp.",
+  "col.email": "Correo",
+  "btn.find_email": "Buscar correo",
+  "email.notfound": "No se encontró correo en el sitio web.",
+  "btn.mark_sent": "Marcar como enviado",
+  "btn.mark_reply": "Registrar respuesta",
+  "reply.label": "Respuesta recibida (opcional)",
+  "sent.badge": "Enviado",
+  "replied.badge": "Respondido"
 }

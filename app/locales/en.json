@@ -81,5 +81,22 @@
   "days.5": "Sat",
   "days.6": "Sun",
   "saved": "Saved.",
-  "error.generic": "Something went wrong."
+  "error.generic": "Something went wrong.",
+  "tab.overview": "Overview",
+  "overview.title": "Prospecting overview",
+  "overview.email": "Email",
+  "overview.whatsapp": "WhatsApp",
+  "stat.prospected_email": "Emails prospected",
+  "stat.prospected_whatsapp": "Numbers prospected",
+  "stat.sent": "Sent",
+  "stat.replied": "Replied",
+  "overview.note": "Sent and replied are recorded by you in Messages. Automatic reply reading arrives with the Gmail and WhatsApp integrations.",
+  "col.email": "Email",
+  "btn.find_email": "Find email",
+  "email.notfound": "No email found on the website.",
+  "btn.mark_sent": "Mark as sent",
+  "btn.mark_reply": "Record reply",
+  "reply.label": "Reply received (optional)",
+  "sent.badge": "Sent",
+  "replied.badge": "Replied"
 }

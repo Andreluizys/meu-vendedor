@@ -15,7 +15,7 @@ os.environ.pop("GOOGLE_PLACES_API_KEY", None)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import config, db, drafts, places  # noqa: E402
+from app import config, db, drafts, emailfinder, places  # noqa: E402
 from app.main import app  # noqa: E402
 
 FAKE_PLACE = {
@@ -116,6 +116,61 @@ class FlowTests(Base):
     def test_html_in_name_is_stored_verbatim(self):
         db.add_leads([{"place_id": "x", "name": "<img src=x onerror=alert(1)>"}])
         self.assertEqual(self.c.get("/api/leads").json()[0]["name"], "<img src=x onerror=alert(1)>")
+
+
+class StatsTests(Base):
+    def _lead_and_draft(self, channel="email", email="", phone=""):
+        db.add_leads([{"place_id": "z1", "name": "Loja Z", "phone": phone, "website": "https://z.example"}])
+        lid = db.list_leads()[0]["id"]
+        if email:
+            self.c.patch(f"/api/leads/{lid}", json={"email": email})
+        return lid, self.c.post("/api/drafts", json={"lead_id": lid, "channel": channel, "body": "oi"}).json()["id"]
+
+    def test_counters_follow_the_flow(self):
+        lid, did = self._lead_and_draft(email="a@z.example", phone="(19) 9 0000-0000")
+        self.assertEqual(self.c.get("/api/stats").json(), {
+            "email": {"prospected": 1, "sent": 0, "replied": 0},
+            "whatsapp": {"prospected": 1, "sent": 0, "replied": 0}})
+        self.assertEqual(self.c.post(f"/api/drafts/{did}/sent").status_code, 409)       # precisa aprovar antes
+        self.c.patch(f"/api/drafts/{did}", json={"status": "approved"})
+        self.assertEqual(self.c.post(f"/api/drafts/{did}/replied", json={"text": "x"}).status_code, 409)  # precisa enviar antes
+        self.assertEqual(self.c.post(f"/api/drafts/{did}/sent").status_code, 200)
+        self.assertEqual(self.c.post(f"/api/drafts/{did}/replied", json={"text": "Tenho interesse"}).status_code, 200)
+        st = self.c.get("/api/stats").json()
+        self.assertEqual(st["email"], {"prospected": 1, "sent": 1, "replied": 1})
+        self.assertEqual(st["whatsapp"]["sent"], 0)                                      # não mistura canais
+        self.assertEqual(self.c.get("/api/leads").json()[0]["status"], "contacted")
+        self.assertEqual(self.c.get("/api/drafts").json()[0]["reply_text"], "Tenho interesse")
+
+    def test_invalid_email_rejected_and_missing_draft(self):
+        lid, _ = self._lead_and_draft()
+        self.assertEqual(self.c.patch(f"/api/leads/{lid}", json={"email": "sem-arroba"}).status_code, 422)
+        self.assertEqual(self.c.post("/api/drafts/999/sent").status_code, 404)
+
+    def test_migrates_old_database(self):
+        import sqlite3
+        config.DB_PATH.unlink(missing_ok=True)
+        con = sqlite3.connect(config.DB_PATH)
+        con.executescript("CREATE TABLE leads (id INTEGER PRIMARY KEY, place_id TEXT UNIQUE, name TEXT NOT NULL, phone TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'new', created_at TEXT NOT NULL);"
+                          "CREATE TABLE drafts (id INTEGER PRIMARY KEY, lead_id INTEGER, channel TEXT, subject TEXT, body TEXT, status TEXT, created_at TEXT, updated_at TEXT);")
+        con.commit(); con.close()
+        self.assertEqual(db.stats()["email"]["prospected"], 0)   # abre sem erro e cria as colunas novas
+
+
+class EmailFinderTests(unittest.TestCase):
+    def test_prefers_same_domain_and_skips_junk(self):
+        page = '<a href="mailto:contato@loja.com.br">x</a> foto@2x.png suporte@wixpress.com outro@gmail.com'
+        with mock.patch.object(emailfinder, "_fetch", return_value=page):
+            self.assertEqual(emailfinder.find_email("https://www.loja.com.br"), "contato@loja.com.br")
+
+    def test_no_site_or_no_email(self):
+        self.assertEqual(emailfinder.find_email(""), "")
+        with mock.patch.object(emailfinder, "_fetch", return_value="sem nada"):
+            self.assertEqual(emailfinder.find_email("loja.com"), "")
+
+    def test_refuses_internal_addresses(self):
+        self.assertEqual(emailfinder._fetch("http://127.0.0.1:8765/"), "")
+        self.assertEqual(emailfinder._fetch("file:///etc/passwd"), "")
 
 
 class PlacesTests(unittest.TestCase):

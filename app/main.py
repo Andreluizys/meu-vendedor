@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from . import config, db, drafts as drafts_mod, places
+from . import config, db, drafts as drafts_mod, emailfinder, places
 
 STATIC = Path(__file__).parent / "static"
 LOCALES = Path(__file__).parent / "locales"
@@ -72,6 +72,7 @@ class ApiKeyIn(BaseModel):
 class LeadPatch(BaseModel):
     status: Literal["new", "approved", "rejected", "contacted"] | None = None
     notes: str | None = Field(None, max_length=2000)
+    email: str | None = Field(None, max_length=200, pattern=r"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class DraftIn(BaseModel):
@@ -85,6 +86,10 @@ class DraftPatch(BaseModel):
     subject: str | None = Field(None, max_length=300)
     body: str | None = Field(None, min_length=1, max_length=5000)
     status: Literal["pending", "approved", "rejected"] | None = None
+
+
+class ReplyIn(BaseModel):
+    text: str = Field("", max_length=5000)
 
 
 class GenerateIn(BaseModel):
@@ -182,7 +187,7 @@ def leads(status: Literal["new", "approved", "rejected", "contacted"] | None = N
 
 @app.patch("/api/leads/{lead_id}")
 def patch_lead(lead_id: int, p: LeadPatch):
-    if not db.update_lead(lead_id, p.status, p.notes):
+    if not db.update_lead(lead_id, p.status, p.notes, p.email):
         raise HTTPException(404, "lead not found")
     return db.get_lead(lead_id)
 
@@ -192,6 +197,17 @@ def del_lead(lead_id: int):
     if not db.delete_lead(lead_id):
         raise HTTPException(404, "lead not found")
     return {"ok": True}
+
+
+@app.post("/api/leads/{lead_id}/find-email")
+def find_email(lead_id: int):
+    lead = db.get_lead(lead_id)
+    if not lead:
+        raise HTTPException(404, "lead not found")
+    email = emailfinder.find_email(lead.get("website") or "")
+    if email:
+        db.update_lead(lead_id, email=email)
+    return {"email": email}
 
 
 @app.post("/api/leads/{lead_id}/draft")
@@ -231,3 +247,30 @@ def del_draft(draft_id: int):
     if not db.delete_draft(draft_id):
         raise HTTPException(404, "draft not found")
     return {"ok": True}
+
+
+# ---------- envio, respostas e números ----------
+
+@app.post("/api/drafts/{draft_id}/sent")
+def draft_sent(draft_id: int):
+    r = db.mark_sent(draft_id)
+    if r == "missing":
+        raise HTTPException(404, "draft not found")
+    if r == "not_approved":
+        raise HTTPException(409, "approve the draft before marking it as sent")
+    return {"ok": True}
+
+
+@app.post("/api/drafts/{draft_id}/replied")
+def draft_replied(draft_id: int, body: ReplyIn):
+    r = db.mark_replied(draft_id, body.text)
+    if r == "missing":
+        raise HTTPException(404, "draft not found")
+    if r == "not_sent":
+        raise HTTPException(409, "mark the draft as sent first")
+    return {"ok": True}
+
+
+@app.get("/api/stats")
+def stats():
+    return db.stats()
