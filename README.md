@@ -4,9 +4,12 @@ Skill do Claude que funciona como um funcionário/vendedor virtual para prospec�
 
 Painel e skill em **português, inglês e espanhol**.
 
-## Status (v0.3)
-Pronto: painel local, entrevista pela skill, **7 funções pré-definidas de nível sênior** (escolhidas na aba Função), busca no Google Maps (API Places oficial), importação dos Dados Abertos do CNPJ, busca de e-mail no site da empresa, rascunhos de e-mail e WhatsApp para aprovar, **envio pelo Gmail com leitura das respostas**, contadores de prospectados/enviados/respondidos e configurações de envio (guardadas).
-**Ainda não existe:** WhatsApp por QR Code, modo automático (o envio é sempre um clique seu em mensagem aprovada) e raspagem do Maps.
+## Status (v1.0)
+Pronto: painel local, entrevista pela skill, **7 funções pré-definidas de nível sênior** (aba Função), busca no Google Maps (API Places oficial), importação dos Dados Abertos do CNPJ, busca de e-mail no site da empresa, rascunhos de e-mail e WhatsApp para aprovar, **envio pelo Gmail com leitura das respostas**, contadores de prospectados/enviados/respondidos e configurações de envio (limite diário, intervalo, dias e horários).
+
+**Regra do produto:** o programa nunca envia sozinho. Toda mensagem precisa da sua aprovação e do seu clique em "Enviar".
+
+**Fica para depois:** WhatsApp por QR Code (aparece no painel como "em breve", com o aviso de risco de banimento do número). Não há raspagem do Google Maps, de propósito: vai contra os termos do Google.
 
 ## Instalação (Windows)
 1. Tenha o Python 3.10+ instalado.
@@ -31,7 +34,7 @@ Baixe os arquivos **Estabelecimentos** do portal de dados abertos do CNPJ, coloq
 Permissões pedidas: enviar e ler e-mails (`gmail.send`, `gmail.readonly`). O app só olha as conversas que ele mesmo começou. As credenciais ficam em `data/`, sem criptografia.
 
 ## Contadores
-"Prospectados" conta e-mails encontrados e, no WhatsApp, só números de celular (telefone fixo não recebe WhatsApp). "Enviadas" e "respondidas" são registradas por você nas Mensagens até as integrações do Gmail e do WhatsApp existirem.
+"Prospectados" conta e-mails encontrados e, no WhatsApp, só números de celular (telefone fixo não recebe WhatsApp). "Enviadas" e "respondidas" dos e-mails pelo Gmail são registradas sozinhas. As de WhatsApp você marca nas Mensagens.
 
 ## Chave do Google Places
 Na aba **Configurações** do painel (ou na variável `GOOGLE_PLACES_API_KEY`). Crie a chave no Google Cloud ativando **Places API (New)**. Há cota gratuita mensal e depois cobrança por uso; telefone e site entram na faixa mais cara. A chave fica só no seu computador, sem criptografia, em `data/meu_vendedor.db`.
@@ -60,4 +63,4 @@ python scripts/mv.py drafts --status pending
 Mude `APP_NAME` e `SKILL_ID` em `app/config.py`, o campo `name` do `SKILL.md` e o nome da pasta.
 
 ## Licença
-A definir antes da publicação.
+MIT. Veja o arquivo `LICENSE`. Cada pessoa usa com as próprias chaves e é responsável pelo que envia.

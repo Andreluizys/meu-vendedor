@@ -119,6 +119,7 @@
         <div><label data-i="settings.typing_max"></label><input type="number" id="s_typing_max_s" min="0" max="30"></div></div>
       <div class="actions"><button class="btn" id="save-send" data-i="btn.save"></button><span class="msg" id="m-send"></span></div>
     </div>
+    <div class="card"><h2 data-i="whatsapp.title"></h2><p class="hint" data-i="whatsapp.note"></p></div>
     <div class="card"><h2 data-i="gmail.title"></h2><p class="hint" data-i="gmail.help"></p>
       <p class="hint" id="gmail-status"></p>
       <div class="row"><div><label data-i="gmail.client_id"></label><input type="text" id="g_id" autocomplete="off"></div>
@@ -174,7 +175,7 @@ function fillSelects() {
   const keep = (id) => $(id).value;
   const pl = keep("p_language"), sm = keep("s_mode");
   $("p_language").replaceChildren(...LANGS.map((c) => h("option", { value: c }, ({ pt: "Português", en: "English", es: "Español" })[c])));
-  $("s_mode").replaceChildren(h("option", { value: "manual" }, t("settings.mode.manual")), h("option", { value: "auto" }, t("settings.mode.auto")));
+  $("s_mode").replaceChildren(h("option", { value: "manual" }, t("settings.mode.manual")));
   if (pl) $("p_language").value = pl; if (sm) $("s_mode").value = sm;
   const f = (id, opts, tk) => { const cur = $(id).value; $(id).replaceChildren(h("option", { value: "" }, t("filter.all")), ...opts.map((o) => h("option", { value: o }, t(tk + o)))); $(id).value = cur; };
   f("leads-filter", ["new", "approved", "rejected", "contacted"], "status.");

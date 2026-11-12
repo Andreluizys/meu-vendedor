@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import cnpj, config, db, drafts as drafts_mod, emailfinder, gmail, limits, places, roles
 
@@ -47,8 +47,8 @@ class Profile(BaseModel):
 
 
 class SendSettings(BaseModel):
-    """Guardado agora; passa a valer quando o envio for ligado (próxima fase)."""
-    mode: Literal["manual", "auto"] = "manual"
+    """Regras do envio pelo Gmail. O envio é sempre manual: cada mensagem precisa de aprovação e clique."""
+    mode: Literal["manual"] = "manual"
     daily_limit: int = Field(30, ge=1, le=1000)
     interval_min_s: int = Field(60, ge=0, le=86400)
     interval_max_s: int = Field(180, ge=0, le=86400)
@@ -58,6 +58,11 @@ class SendSettings(BaseModel):
     typing_simulation: bool = True
     typing_min_s: int = Field(4, ge=0, le=30)
     typing_max_s: int = Field(5, ge=0, le=30)
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _always_manual(cls, _v):
+        return "manual"  # configuração antiga com "auto" volta para manual
 
 
 class SearchIn(BaseModel):

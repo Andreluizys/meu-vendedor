@@ -19,7 +19,7 @@ python scripts/mv.py role-show         # imprime o guia sênior da função ativ
 Leia o guia com `role-show` e **passe a agir exatamente nessa função**, com o nível de senioridade descrito, até ele trocar. Se o pedido do usuário não combinar com a função ativa, sugira trocar em vez de improvisar.
 
 ## Regra de ouro
-**Nunca envie nada.** Você só prepara rascunhos. O usuário aprova no painel. O envio automático ainda não existe nesta versão.
+**Nunca envie nada.** Você só prepara rascunhos. O usuário aprova no painel. O programa nunca envia sozinho: o envio é sempre um clique do usuário em mensagem aprovada.
 
 ## Passo 1: entrevista (refine até entender a finalidade)
 Faça perguntas curtas, em rodadas de 2 a 4, e use as respostas para fazer as próximas. Não despeje um questionário. Entenda:
@@ -63,8 +63,8 @@ Escreva o corpo da mensagem num arquivo e use `--body-file` quando tiver várias
 ```
 python -m app
 ```
-Abre `http://127.0.0.1:8765/`. O usuário edita, aprova ou rejeita cada mensagem, ajusta o perfil e as configurações de envio (guardadas para a próxima fase).
+Abre `http://127.0.0.1:8765/`. O usuário edita, aprova ou rejeita cada mensagem, ajusta o perfil e as configurações de envio (valem para o envio pelo Gmail).
 
 ## Limites e cuidados
 - Prospecção por e-mail e WhatsApp tem regras (LGPD/GDPR, anti-spam, termos do WhatsApp). Prefira poucos contatos bem escolhidos a volume, e respeite pedidos de "sair".
-- Se o usuário pedir algo fora do escopo desta versão (envio, QR Code do WhatsApp, Gmail), diga que está planejado para a próxima fase.
+- Se o usuário pedir algo fora do escopo desta versão (envio, QR Code do WhatsApp, Gmail), diga que o QR Code do WhatsApp é futuro e que o envio automático não existe de propósito.
