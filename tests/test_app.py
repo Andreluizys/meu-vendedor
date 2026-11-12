@@ -62,7 +62,7 @@ class PanelTests(Base):
         self.assertEqual(self.c.put("/api/send-settings", json=ok).status_code, 200)
         got = self.c.get("/api/send-settings").json()
         self.assertEqual(got["daily_limit"], 15)
-        self.assertEqual(got["mode"], "manual")  # o envio é sempre manual, mesmo se pedirem "auto"
+        self.assertEqual(got["mode"], "auto")
 
     def test_api_key_never_returned(self):
         self.c.put("/api/api-key", json={"api_key": "segredo123"})

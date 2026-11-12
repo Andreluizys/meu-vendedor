@@ -7,7 +7,11 @@ Painel e skill em **português, inglês e espanhol**.
 ## Status (v1.0)
 Pronto: painel local, entrevista pela skill, **7 funções pré-definidas de nível sênior** (aba Função), busca no Google Maps (API Places oficial), importação dos Dados Abertos do CNPJ, busca de e-mail no site da empresa, rascunhos de e-mail e WhatsApp para aprovar, **envio pelo Gmail com leitura das respostas**, contadores de prospectados/enviados/respondidos e configurações de envio (limite diário, intervalo, dias e horários).
 
-**Regra do produto:** o programa nunca envia sozinho. Toda mensagem precisa da sua aprovação e do seu clique em "Enviar".
+**Dois modos de envio (você escolhe em Configurações):**
+- **Manual:** o vendedor prepara os e-mails, você revisa, clica em "Aprovar todas as pendentes" e depois em "Enviar aprovadas". Só as aprovadas saem.
+- **Automático:** se você confia no vendedor, ele envia sozinho os e-mails prontos, com ou sem a sua aprovação.
+
+Nos dois modos valem o limite diário, o intervalo aleatório entre envios, os dias e os horários permitidos. O envio roda enquanto o painel estiver aberto. No modo automático você é responsável pelo que for enviado (LGPD, regras anti-spam).
 
 **Fica para depois:** WhatsApp por QR Code (aparece no painel como "em breve", com o aviso de risco de banimento do número). Não há raspagem do Google Maps, de propósito: vai contra os termos do Google.
 

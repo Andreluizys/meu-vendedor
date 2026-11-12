@@ -8,9 +8,10 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from . import cnpj, config, db, drafts as drafts_mod, emailfinder, gmail, limits, places, roles
+from .sender import sender
 
 STATIC = Path(__file__).parent / "static"
 LOCALES = Path(__file__).parent / "locales"
@@ -47,8 +48,8 @@ class Profile(BaseModel):
 
 
 class SendSettings(BaseModel):
-    """Regras do envio pelo Gmail. O envio é sempre manual: cada mensagem precisa de aprovação e clique."""
-    mode: Literal["manual"] = "manual"
+    """Regras do envio pelo Gmail. manual = eu aprovo e mando enviar; auto = o vendedor envia sozinho."""
+    mode: Literal["manual", "auto"] = "manual"
     daily_limit: int = Field(30, ge=1, le=1000)
     interval_min_s: int = Field(60, ge=0, le=86400)
     interval_max_s: int = Field(180, ge=0, le=86400)
@@ -58,11 +59,6 @@ class SendSettings(BaseModel):
     typing_simulation: bool = True
     typing_min_s: int = Field(4, ge=0, le=30)
     typing_max_s: int = Field(5, ge=0, le=30)
-
-    @field_validator("mode", mode="before")
-    @classmethod
-    def _always_manual(cls, _v):
-        return "manual"  # configuração antiga com "auto" volta para manual
 
 
 class SearchIn(BaseModel):
@@ -124,6 +120,13 @@ def _validate_send(s: SendSettings) -> None:
         raise HTTPException(422, "typing_min_s must be <= typing_max_s")
     if s.hour_start >= s.hour_end:
         raise HTTPException(422, "hour_start must be earlier than hour_end")
+
+
+def _send_settings() -> dict:
+    return SendSettings(**db.get_setting("send_settings", {})).model_dump()
+
+
+sender.settings_fn = _send_settings
 
 
 def api_key() -> str:
@@ -393,3 +396,41 @@ def send_draft(draft_id: int):
     db.set_thread(draft_id, thread)
     db.mark_sent(draft_id)
     return {"ok": True, "thread_id": thread}
+
+
+# ---------- aprovar em lote e envio ----------
+
+class ApproveAllIn(BaseModel):
+    channel: Literal["email", "whatsapp"] | None = None
+
+
+@app.post("/api/drafts/approve-all")
+def approve_all(a: ApproveAllIn):
+    return {"approved": db.approve_all(a.channel)}
+
+
+@app.get("/api/sender/status")
+def sender_status():
+    return sender.status()
+
+
+@app.post("/api/sender/start")
+def sender_start():
+    """Modo manual: envia as e-mails aprovadas, respeitando limite, horário e intervalo."""
+    try:
+        sender.start_queue()
+    except gmail.GmailError as e:
+        raise HTTPException(400, str(e))
+    return sender.status()
+
+
+@app.post("/api/sender/stop")
+def sender_stop():
+    sender.stop_queue()
+    return sender.status()
+
+
+@app.post("/api/sender/resume")
+def sender_resume():
+    sender.resume()
+    return sender.status()

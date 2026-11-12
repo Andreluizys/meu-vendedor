@@ -100,6 +100,11 @@
     <div class="row" style="align-items:center"><h2 data-i="drafts.title" style="flex:3"></h2>
       <select id="drafts-filter" style="max-width:180px"></select></div>
     <p class="hint" data-i="drafts.note"></p>
+    <div class="card" style="background:var(--bg)"><p class="hint" id="sender-line"></p><p class="hint" id="sender-counts"></p>
+      <div class="actions"><button class="btn good" id="approve-all" data-i="btn.approve_all"></button>
+        <button class="btn" id="send-approved" data-i="btn.send_approved"></button>
+        <button class="btn bad" id="stop-send" data-i="btn.stop_send"></button>
+        <button class="btn ghost" id="resume-send" data-i="btn.resume_send"></button><span class="msg" id="m-sender"></span></div></div>
     <div class="actions" style="margin:0 0 12px"><button class="btn ghost" id="check-replies" data-i="btn.check_replies"></button><span class="msg" id="m-replies"></span></div>
     <div id="drafts-list"></div>
     <p class="hint" id="drafts-empty" data-i="drafts.empty"></p>
@@ -175,7 +180,7 @@ function fillSelects() {
   const keep = (id) => $(id).value;
   const pl = keep("p_language"), sm = keep("s_mode");
   $("p_language").replaceChildren(...LANGS.map((c) => h("option", { value: c }, ({ pt: "Português", en: "English", es: "Español" })[c])));
-  $("s_mode").replaceChildren(h("option", { value: "manual" }, t("settings.mode.manual")));
+  $("s_mode").replaceChildren(h("option", { value: "manual" }, t("settings.mode.manual")), h("option", { value: "auto" }, t("settings.mode.auto")));
   if (pl) $("p_language").value = pl; if (sm) $("s_mode").value = sm;
   const f = (id, opts, tk) => { const cur = $(id).value; $(id).replaceChildren(h("option", { value: "" }, t("filter.all")), ...opts.map((o) => h("option", { value: o }, t(tk + o)))); $(id).value = cur; };
   f("leads-filter", ["new", "approved", "rejected", "contacted"], "status.");
@@ -193,7 +198,7 @@ function showTab(k) {
   currentTab = k;
   TABS.forEach((x) => $("s-" + x).classList.toggle("on", x === k));
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === k));
-  if (k === "role") loadRoles(); if (k === "overview") loadStats(); if (k === "leads") loadLeads(); if (k === "drafts") loadDrafts(); if (k === "settings") loadSettings();
+  if (k === "role") loadRoles(); if (k === "overview") loadStats(); if (k === "leads") loadLeads(); if (k === "drafts") { loadDrafts(); loadSender(); } clearInterval(senderTimer); if (k === "drafts") senderTimer = setInterval(() => { loadSender(); loadDrafts(); }, 5000); if (k === "settings") loadSettings();
 }
 
 // ---------- perfil ----------
@@ -303,6 +308,35 @@ function replyBox(d) {
       try { await api("POST", "/api/drafts/" + d.id + "/replied", { text: txt.value }); loadDrafts(); } catch (e) { m.textContent = e.message; m.className = "msg err"; }
     } }, t("btn.mark_reply")), m));
 }
+
+
+// ---------- envio em lote e automático ----------
+let senderTimer = null;
+async function loadSender() {
+  let st; try { st = await api("GET", "/api/sender/status"); } catch (e) { return; }
+  const auto = st.mode === "auto";
+  $("sender-line").textContent = st.error ? t("sender.error", { error: st.error })
+    : auto ? t("sender.auto_on") : st.queue_on ? t("sender.manual_running") : t("sender.manual_idle");
+  $("sender-counts").textContent = t("sender.counts", st) + (st.reason && st.active ? " • " + st.reason : "");
+  $("send-approved").style.display = auto ? "none" : "";
+  $("stop-send").style.display = st.queue_on ? "" : "none";
+  $("resume-send").style.display = st.error ? "" : "none";
+}
+$("approve-all").onclick = guard("m-sender", async () => {
+  const r = await api("POST", "/api/drafts/approve-all", {});
+  say("m-sender", t("approved.n", r), true); loadDrafts(); loadSender();
+});
+$("send-approved").onclick = guard("m-sender", async () => {
+  const before = await api("GET", "/api/sender/status");
+  if (!before.remaining) { say("m-sender", t("sender.nothing"), false); return; }
+  if (!confirm(t("confirm.send_batch", { n: before.remaining }))) return;
+  await api("POST", "/api/sender/start"); loadSender();
+});
+$("stop-send").onclick = guard("m-sender", async () => { await api("POST", "/api/sender/stop"); loadSender(); });
+$("resume-send").onclick = guard("m-sender", async () => { await api("POST", "/api/sender/resume"); loadSender(); });
+$("s_mode").onchange = (e) => {
+  if (e.target.value === "auto" && !confirm(t("settings.auto.confirm"))) e.target.value = "manual";
+};
 
 // ---------- resumo ----------
 async function loadStats() {

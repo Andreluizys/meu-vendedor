@@ -265,3 +265,36 @@ def pending_threads() -> list[dict]:
         rows = con.execute("SELECT id, thread_id FROM drafts WHERE channel = 'email' AND sent_at IS NOT NULL "
                            "AND replied_at IS NULL AND COALESCE(thread_id, '') != ''").fetchall()
     return [dict(r) for r in rows]
+
+
+# ---------- aprovar em lote e fila de envio ----------
+
+def approve_all(channel: str | None = None) -> int:
+    """Aprova de uma vez todos os rascunhos pendentes (de um canal, ou de todos). Devolve quantos."""
+    sql, args = "UPDATE drafts SET status = 'approved', updated_at = ? WHERE status = 'pending'", [now()]
+    if channel:
+        sql += " AND channel = ?"
+        args.append(channel)
+    with db() as con:
+        return con.execute(sql, args).rowcount
+
+
+_QUEUE_SQL = ("FROM drafts d JOIN leads l ON l.id = d.lead_id WHERE d.channel = 'email' AND d.sent_at IS NULL "
+              "AND TRIM(COALESCE(l.email, '')) != '' AND d.status IN ({})")
+
+
+def _queue_status(include_pending: bool) -> str:
+    return "'approved', 'pending'" if include_pending else "'approved'"
+
+
+def next_email_to_send(include_pending: bool = False) -> dict | None:
+    """Próximo e-mail da fila: aprovado (e, no modo automático, também os pendentes). Rejeitados nunca."""
+    with db() as con:
+        row = con.execute("SELECT d.*, l.email AS lead_email, l.name AS lead_name " +
+                          _QUEUE_SQL.format(_queue_status(include_pending)) + " ORDER BY d.id ASC LIMIT 1").fetchone()
+    return dict(row) if row else None
+
+
+def count_email_to_send(include_pending: bool = False) -> int:
+    with db() as con:
+        return con.execute("SELECT COUNT(*) " + _QUEUE_SQL.format(_queue_status(include_pending))).fetchone()[0]
